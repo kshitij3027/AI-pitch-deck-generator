@@ -1,0 +1,5 @@
+{
+  "name": "PitchDeck AI",
+  "description": "A beautiful, AI-powered pitch deck builder using Gemini to create compelling business narratives and slides.",
+  "requestFramePermissions": []
+}
