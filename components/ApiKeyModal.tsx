@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Lock, Key, Eye, EyeOff, ExternalLink } from 'lucide-react';
+import { Lock, Key, Eye, EyeOff, ExternalLink, ShieldCheck } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { setApiKey } from '../services/openaiService';
@@ -25,20 +25,28 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose }) => 
     onClose();
   };
 
+  // Don't render if closed (optional optimization since Modal handles it, but good for state reset)
+  if (!isOpen) return null;
+
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={() => {}} // Prevent closing without key
       title="Enter OpenAI API Key"
       description="To generate pitch decks with AI, please enter your OpenAI API key."
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="rounded-lg bg-blue-50 p-4 text-sm text-blue-800">
-          <div className="flex items-center gap-2 mb-2 font-semibold">
-             <Lock size={14} />
-             Secure Client-Side Storage
+        <div className="rounded-lg bg-blue-50 p-4 text-sm text-blue-800 border border-blue-100">
+          <div className="flex items-center gap-2 mb-2 font-semibold text-blue-900">
+             <ShieldCheck size={16} />
+             Maximum Security Mode
           </div>
-          <p>Your API key is encrypted and stored locally in your browser session. It is deleted automatically when you close this tab. It is never sent to our servers.</p>
+          <p className="mb-2">Your API key is stored in <strong>temporary memory (RAM) only</strong>.</p>
+          <ul className="list-disc list-inside space-y-1 opacity-90 text-xs">
+             <li>It is <strong>never</strong> saved to your browser's storage or cookies.</li>
+             <li>It is <strong>automatically cleared</strong> if you refresh the page.</li>
+             <li>It is <strong>wiped</strong> after 15 minutes of inactivity.</li>
+          </ul>
         </div>
 
         <div className="space-y-1">
@@ -55,8 +63,9 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose }) => 
                   setError('');
               }}
               placeholder="sk-..."
-              className="block w-full rounded-lg border border-slate-300 bg-white p-2.5 pl-10 pr-10 text-sm text-slate-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:outline-none transition-all"
+              className="block w-full rounded-lg border border-slate-300 bg-white p-2.5 pl-10 pr-10 text-sm text-slate-900 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:outline-none transition-all shadow-sm"
               autoFocus
+              autoComplete="off"
             />
             <button
               type="button"
@@ -69,13 +78,13 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose }) => 
           {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
         </div>
 
-        <div className="text-xs text-slate-500">
+        <div className="text-xs text-slate-500 pt-2">
           Don't have a key? <a href="https://platform.openai.com/account/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline inline-flex items-center gap-0.5">Get one from OpenAI <ExternalLink size={10} /></a>
         </div>
 
-        <div className="flex justify-end gap-2 pt-2">
+        <div className="flex justify-end gap-2 pt-4">
             <Button type="submit" disabled={!key}>
-                Save & Continue
+                Start Creating
             </Button>
         </div>
       </form>

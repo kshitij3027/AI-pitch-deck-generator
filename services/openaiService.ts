@@ -7,49 +7,35 @@ export interface OutlineSlide {
 
 const API_URL = "https://api.openai.com/v1/chat/completions";
 
-// In-memory cache for the key
+// --- SECURE IN-MEMORY STORAGE ---
+// The key lives here, inside the module closure.
+// It is NOT exported. It is NOT saved to localStorage/sessionStorage.
+// It is accessible only by functions defined in this file.
 let _apiKey: string | null = null;
 
-// Basic obfuscation to avoid storing plain text in storage
-const encrypt = (text: string) => btoa(text.split('').reverse().join('')); 
-const decrypt = (encoded: string) => atob(encoded).split('').reverse().join('');
-
 export const hasApiKey = (): boolean => {
-  if (_apiKey) return true;
-  return !!sessionStorage.getItem('pitchdeck_ai_key');
+  return !!_apiKey;
 };
 
 export const setApiKey = (key: string) => {
   _apiKey = key;
-  sessionStorage.setItem('pitchdeck_ai_key', encrypt(key));
 };
 
-export const getApiKey = (): string | null => {
-  if (_apiKey) return _apiKey;
-  const stored = sessionStorage.getItem('pitchdeck_ai_key');
-  if (stored) {
-    try {
-      _apiKey = decrypt(stored);
-      return _apiKey;
-    } catch (e) {
-      return null;
-    }
-  }
-  return null;
+export const clearApiKey = () => {
+  _apiKey = null;
 };
 
 async function fetchOpenAI(messages: any[]) {
-  const apiKey = getApiKey();
-  
-  if (!apiKey) {
-    throw new Error("OpenAI API Key is missing. Please provide a valid API key.");
+  // Access the private variable directly via closure
+  if (!_apiKey) {
+    throw new Error("OpenAI API Key is missing or has expired. Please re-enter your key.");
   }
 
   const response = await fetch(API_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`
+      "Authorization": `Bearer ${_apiKey}`
     },
     body: JSON.stringify({
       model: "gpt-4o", 
@@ -61,6 +47,11 @@ async function fetchOpenAI(messages: any[]) {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
+    if (response.status === 401) {
+        // If key is invalid/revoked, clear it so user is prompted again
+        clearApiKey();
+        throw new Error("Invalid API Key. Please check your key and try again.");
+    }
     throw new Error(`OpenAI API Error: ${response.status} ${errorData.error?.message || ''}`);
   }
 
@@ -124,6 +115,10 @@ export const generateSlideContent = async (topic: string, slideInfo: OutlineSlid
     };
   } catch (error) {
     console.error("Error generating slide content");
+    // Propagate error if it's an auth error (so UI can show modal), otherwise fallback
+    if (error instanceof Error && (error.message.includes("API Key") || error.message.includes("401"))) {
+        throw error;
+    }
     return { content: "Error generating content. Please edit manually.", notes: "" };
   }
 };
@@ -143,6 +138,9 @@ export const generateSingleSlideOutline = async (topic: string): Promise<Outline
     ]);
     return result;
   } catch (error) {
+    if (error instanceof Error && (error.message.includes("API Key") || error.message.includes("401"))) {
+        throw error;
+    }
     // Fallback
     return {
       title: "New Slide",
@@ -208,6 +206,9 @@ export const determineEditorAction = async (
     return result;
   } catch (error) {
     console.error("Error determining action", error);
+    if (error instanceof Error && (error.message.includes("API Key") || error.message.includes("401"))) {
+        throw error; // Re-throw auth errors
+    }
     return { type: 'CHAT', response: "I'm having trouble understanding. Could you rephrase that?" };
   }
 };

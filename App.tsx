@@ -1,30 +1,32 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dashboard } from './components/Dashboard';
 import { Editor } from './components/Editor';
-import { ApiKeyModal } from './components/ApiKeyModal';
 import { ViewState } from './types';
-import { hasApiKey } from './services/openaiService';
+import { ApiKeyModal } from './components/ApiKeyModal';
+import { useInactivity } from './hooks/useInactivity';
+import { hasApiKey, clearApiKey } from './services/openaiService';
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('dashboard');
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
 
+  // Check for API key on mount
   useEffect(() => {
-    // Check for API key when user enters the app
     if (!hasApiKey()) {
       setShowApiKeyModal(true);
     }
   }, []);
 
+  // Setup inactivity timer (15 minutes)
+  useInactivity(() => {
+    clearApiKey();
+    setShowApiKeyModal(true);
+  }, 15 * 60 * 1000);
+
   const handleCreateNew = () => {
     setActiveDeckId(null); // null indicates new deck
     setView('editor');
-    // Re-check key when trying to create new work
-    if (!hasApiKey()) {
-      setShowApiKeyModal(true);
-    }
   };
 
   const handleOpenDeck = (id: string) => {
@@ -50,7 +52,7 @@ const App: React.FC = () => {
           onBack={handleBackToDashboard} 
         />
       )}
-      
+
       <ApiKeyModal 
         isOpen={showApiKeyModal} 
         onClose={() => setShowApiKeyModal(false)} 
